@@ -1,5 +1,5 @@
 from fastapi import FastAPI, HTTPException
-from fastapi.middleware.cors import CORSMiddleware  # Added for frontend CORS
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import joblib
 import re
@@ -7,24 +7,25 @@ from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
 import nltk
 
-# Download NLTK data (one-time, quiet)
+# Download NLTK data
 nltk.download('stopwords', quiet=True)
 nltk.download('punkt', quiet=True)
-nltk.download('punkt_tab', quiet=True)  # For tokenizer
+nltk.download('punkt_tab', quiet=True)
 
 app = FastAPI(title="Fake News Detector API")
 
-# Add CORS middleware to allow React frontend (localhost:5173) to call API
+# CORS for frontend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],  # Vite dev server
+    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Load your saved model and vectorizer (RF from training)
-model = joblib.load('best_model.pkl')
+# Load BOTH models and vectorizer (for live comparison)
+dt_model = joblib.load('dt_model.pkl')  # Decision Tree
+rf_model = joblib.load('rf_model.pkl')  # Random Forest
 vectorizer = joblib.load('vectorizer.pkl')
 
 def clean_text(text: str) -> str:
@@ -46,25 +47,45 @@ async def predict(request: NewsRequest):
     
     cleaned = clean_text(request.text)
     
-    # Adjusted guard for short inputs (prevents unreliable predictions; raised to <20 for headlines/short articles)
-    if len(cleaned.split()) < 20:  # Under 20 words = too short for reliable news detection
+    if len(cleaned.split()) < 20:
         return {
             "prediction": "Uncertain",
             "confidence": 0.0,
-            "explanation": "Input too short—add more text for accurate detection. (Model best on 50+ words)",
-            "algorithm": "N/A (Short Input Guard)"
+            "explanation": "Input too short—add more text for accurate detection.",
+            "comparison": {
+                "decision_tree": {"prediction": "N/A", "confidence": 0},
+                "random_forest": {"prediction": "N/A", "confidence": 0}
+            },
+            "best_algorithm": "N/A"
         }
     
     vec = vectorizer.transform([cleaned])
-    pred = model.predict(vec)[0]
-    probs = model.predict_proba(vec)[0]
-    label = 'Fake' if pred == 0 else 'Real'
-    confidence = float(max(probs)) * 100
+    
+    # Run BOTH models
+    dt_pred = dt_model.predict(vec)[0]
+    dt_probs = dt_model.predict_proba(vec)[0]
+    dt_label = 'Fake' if dt_pred == 0 else 'Real'
+    dt_conf = float(max(dt_probs)) * 100
+    
+    rf_pred = rf_model.predict(vec)[0]
+    rf_probs = rf_model.predict_proba(vec)[0]
+    rf_label = 'Fake' if rf_pred == 0 else 'Real'
+    rf_conf = float(max(rf_probs)) * 100
+    
+    # Determine best (higher confidence or RF by default)
+    best_algo = "Random Forest" if rf_conf > dt_conf else "Decision Tree"
+    best_pred = rf_label if best_algo == "Random Forest" else dt_label
+    best_conf = rf_conf if best_algo == "Random Forest" else dt_conf
+    
     return {
-        "prediction": label,
-        "confidence": round(confidence, 1),
-        "explanation": "Powered by Random Forest ML model (99.8% accurate on test data).",
-        "algorithm": "Random Forest"  # Dynamic: Shows the algorithm used
+        "prediction": best_pred,  # Overall prediction (from best)
+        "confidence": round(best_conf, 1),
+        "explanation": f"Comparison: Decision Tree says {dt_label} ({round(dt_conf, 1)}%), Random Forest says {rf_label} ({round(rf_conf, 1)}%). Best: {best_algo}.",
+        "comparison": {
+            "decision_tree": {"prediction": dt_label, "confidence": round(dt_conf, 1)},
+            "random_forest": {"prediction": rf_label, "confidence": round(rf_conf, 1)}
+        },
+        "best_algorithm": best_algo
     }
 
 @app.get("/")

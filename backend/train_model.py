@@ -2,7 +2,7 @@ import pandas as pd  # For loading/handling data
 import numpy as np   # For numbers
 from sklearn.model_selection import train_test_split  # For splitting data
 from sklearn.feature_extraction.text import TfidfVectorizer  # Text to numbers
-from sklearn.linear_model import LogisticRegression
+from sklearn.tree import DecisionTreeClassifier  # Changed: Decision Tree instead of Logistic
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
 import joblib  # To save model
@@ -72,11 +72,11 @@ print("Training features shape:", X_train_vec.shape)
 
 # Step 3: Train and Compare Models
 print("\nTraining models...")
-# Model 1: Logistic Regression
-lr_model = LogisticRegression(random_state=42, max_iter=1000)
-lr_model.fit(X_train_vec, y_train)
-lr_pred = lr_model.predict(X_test_vec)
-lr_acc = accuracy_score(y_test, lr_pred)
+# Model 1: Decision Tree (Changed from Logistic)
+dt_model = DecisionTreeClassifier(random_state=42, max_depth=10)  # Limited depth to avoid overfitting
+dt_model.fit(X_train_vec, y_train)
+dt_pred = dt_model.predict(X_test_vec)
+dt_acc = accuracy_score(y_test, dt_pred)
 
 # Model 2: Random Forest
 rf_model = RandomForestClassifier(n_estimators=100, random_state=42, n_jobs=-1)
@@ -85,29 +85,31 @@ rf_pred = rf_model.predict(X_test_vec)
 rf_acc = accuracy_score(y_test, rf_pred)
 
 # Results
-print("Logistic Regression Accuracy:", round(lr_acc, 3))
+print("Decision Tree Accuracy:", round(dt_acc, 3))
 print("Random Forest Accuracy:", round(rf_acc, 3))
-print("\nLogistic Report:\n", classification_report(y_test, lr_pred, target_names=['Fake', 'Real']))
+print("\nDecision Tree Report:\n", classification_report(y_test, dt_pred, target_names=['Fake', 'Real']))
 
 # Confusion Matrix Plot
 fig, axes = plt.subplots(1, 2, figsize=(10, 4))
-sns.heatmap(confusion_matrix(y_test, lr_pred), annot=True, fmt='d', ax=axes[0], cmap='Blues')
-axes[0].set_title('Logistic Regression')
+sns.heatmap(confusion_matrix(y_test, dt_pred), annot=True, fmt='d', ax=axes[0], cmap='Blues')
+axes[0].set_title('Decision Tree')
 sns.heatmap(confusion_matrix(y_test, rf_pred), annot=True, fmt='d', ax=axes[1], cmap='Blues')
 axes[1].set_title('Random Forest')
 plt.savefig('confusion_matrix.png')  # Save for your slides!
 # plt.show()  # Commented to avoid pop-up
 
 # Pick Best (higher F1 for Fake—use '0' key since labels are numeric)
-lr_report = classification_report(y_test, lr_pred, output_dict=True)
+dt_report = classification_report(y_test, dt_pred, output_dict=True)
 rf_report = classification_report(y_test, rf_pred, output_dict=True)
-lr_f1 = lr_report['0']['f1-score']  # '0' = Fake
+dt_f1 = dt_report['0']['f1-score']  # '0' = Fake
 rf_f1 = rf_report['0']['f1-score']  # '0' = Fake
-best_model = lr_model if lr_f1 > rf_f1 else rf_model
-best_name = "Logistic Regression" if lr_f1 > rf_f1 else "Random Forest"
-print(f"\nBest Model: {best_name} (Fake F1: {max(lr_f1, rf_f1):.3f})")
+best_model = dt_model if dt_f1 > rf_f1 else rf_model
+best_name = "Decision Tree" if dt_f1 > rf_f1 else "Random Forest"
+print(f"\nBest Model: {best_name} (Fake F1: {max(dt_f1, rf_f1):.3f})")
 
-# Save Best Model and Vectorizer
-joblib.dump(best_model, 'best_model.pkl')
+# Save Both Models and Vectorizer (for live comparison in app)
+joblib.dump(dt_model, 'dt_model.pkl')  # Save Decision Tree
+joblib.dump(rf_model, 'rf_model.pkl')  # Save Random Forest (renamed for clarity)
+joblib.dump(best_model, 'best_model.pkl')  # Save the winner
 joblib.dump(vectorizer, 'vectorizer.pkl')
-print("\nModel and vectorizer saved! Ready for API.")
+print("\nModels and vectorizer saved! Ready for API.")
