@@ -117,6 +117,7 @@ npm run dev
 To update the AI with new data:
 1.  Add your dataset (CSV) to `backend/data/`.
 2.  Run the training script:
+
     ```bash
     python backend/train_model.py
     ```
