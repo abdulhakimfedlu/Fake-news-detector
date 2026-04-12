@@ -23,7 +23,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
 # Load BOTH models and vectorizer (for live comparison)
 dt_model = joblib.load('dt_model.pkl')  # Decision Tree
 rf_model = joblib.load('rf_model.pkl')  # Random Forest
