@@ -1,4 +1,3 @@
-
 import React from 'react';
 
 const InputForm = ({ text, onTextChange, onSubmit, loading, disabled }) => (
