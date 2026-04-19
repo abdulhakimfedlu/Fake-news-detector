@@ -10,7 +10,6 @@ import nltk
 nltk.download('stopwords', quiet=True)
 nltk.download('punkt', quiet=True)
 nltk.download('punkt_tab', quiet=True)
-
 app = FastAPI(title="Fake News Detector API")
 # CORS for frontend
 app.add_middleware(
