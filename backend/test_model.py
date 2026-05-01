@@ -13,7 +13,6 @@ def clean_text(text):
     stop_words = set(stopwords.words('english'))
     tokens = [w for w in tokens if w not in stop_words and len(w) > 2]
     return ' '.join(tokens)
-
 # Load
 model = joblib.load('best_model.pkl')
 vectorizer = joblib.load('vectorizer.pkl')
